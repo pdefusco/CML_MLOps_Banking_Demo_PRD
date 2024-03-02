@@ -136,20 +136,18 @@
 # model accruacy is evaluated every 100 samples and added as an aggregate metric.
 # Overtime this accuracy metric falls due the error introduced into the data.
 
-import time, os, random, json
+import cdsw
+import time, os, random, json, copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import classification_report
 from cmlbootstrap import CMLBootstrap
-import copy
 from pyspark.sql import SparkSession
-from pyspark.sql.types import *
 import cmlapi
 from src.api import ApiUtility
-from datagen import BankDataGen
-from pyspark.ml.feature import VectorAssembler, StandardScaler, Imputer, StringIndexer, OneHotEncoder
+from sklearn.metrics import classification_report
 import cml.data_v1 as cmldata
+from datagen_utils import BankDataGen
 
 #---------------------------------------------------
 #               CREATE BATCH DATA
@@ -157,8 +155,8 @@ import cml.data_v1 as cmldata
 
 USERNAME = os.environ["PROJECT_OWNER"]
 DBNAME = "BNK_MLOPS_DEMO"
-STORAGE = "s3a://goes-se-sandbox01"
-CONNECTION_NAME = "se-aw-mdl"
+STORAGE = "go01-aw-dl"
+CONNECTION_NAME = "go01-aw-dl"
 
 # Instantiate BankDataGen class
 dg = BankDataGen(USERNAME, DBNAME, STORAGE, CONNECTION_NAME)
@@ -190,19 +188,6 @@ model_endpoint = (
     HOST.split("//")[0] + "//modelservice." + HOST.split("//")[1] + "/model"
 )
 
-# This will randomly return True for input and increases the likelihood of returning
-# true based on `percent`
-def fraud_error(item, percent):
-    if random.random() < percent:
-        return True
-    else:
-        return True if item == "Yes" else False
-
-# Get 1000 samples
-df_sample_clean = df.sample(1000)
-
-#df_sample.groupby("Churn")["Churn"].count()
-
 #df_sample_clean = (
 #    df_sample.replace({"SeniorCitizen": {"1": "Yes", "0": "No"}})
 #    .replace(r"^\s$", np.nan, regex=True)
@@ -210,29 +195,38 @@ df_sample_clean = df.sample(1000)
 #)
 
 # Create an array of model responses.
-response_labels_sample = []
+response_labels = []
 
 # Run Similation to make 1000 calls to the model with increasing error
 percent_counter = 0
-percent_max = len(df_sample_clean)
+percent_max = len(df)
 
-for record in json.loads(df_sample_clean.to_json(orient="records")):
-    print("Added {} records".format(percent_counter)) if (
-        percent_counter % 50 == 0
-    ) else None
-    percent_counter += 1
-    no_churn_record = copy.deepcopy(record)
-    no_churn_record.pop("label")
-    # **note** this is an easy way to interact with a model in a script
-    response = cdsw.call_model(Model_AccessKey, no_churn_record)
-    response_labels_sample.append(
-        {
-            "uuid": response["response"]["uuid"],
-            "final_label": record["fraud"],
-            "response_label": response["response"]["prediction"],
-            "timestamp_ms": int(round(time.time() * 1000)),
-        }
-    )
+record = '{"dataframe_split":{"columns":["age", "credit_card_balance", "bank_account_balance", "mortgage_balance", "sec_bank_account_balance", "savings_account_balance", "sec_savings_account_balance", "total_est_nworth", "primary_loan_balance", "secondary_loan_balance", "uni_loan_balance", "longitude", "latitude", "transaction_amount"],"data":[[35.5, 20000.5, 3900.5, 14000.5, 2944.5, 3400.5, 12000.5, 29000.5, 1300.5, 15000.5, 10000.5, 2000.5, 90.5, 120.5]]}}'
+
+import random
+import numpy as np
+
+
+def submitSyntheticRequest():
+    """
+    Method to create and send a synthetic request to the model
+    """
+
+    myFloats = np.random.uniform(low=100.5, high=1003.3, size=(14,)).tolist()
+
+    record = '{"dataframe_split":{"columns":["age", "credit_card_balance", "bank_account_balance", "mortgage_balance", "sec_bank_account_balance", "savings_account_balance", "sec_savings_account_balance", "total_est_nworth", "primary_loan_balance", "secondary_loan_balance", "uni_loan_balance", "longitude", "latitude", "transaction_amount"],\
+    "data":""}}'
+
+    data = json.loads(record)
+    data['dataframe_split']['data'] = [myFloats]
+    response = cdsw.call_model(Model_AccessKey, data)
+
+    return response
+
+
+for i in range(10000):
+  submitSyntheticRequest()
+
 
 # The "ground truth" loop adds the updated actual label value and an accuracy measure
 # every 100 calls to the model.
