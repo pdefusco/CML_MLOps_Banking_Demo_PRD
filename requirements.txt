@@ -7,3 +7,4 @@ Faker==20.1.0
 dbldatagen==0.3.5
 jmespath==1.0.1
 git+https://github.com/fastforwardlabs/cmlbootstrap#egg=cmlbootstrap
+seaborn==0.13.2
