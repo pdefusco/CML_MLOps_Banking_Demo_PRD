@@ -136,13 +136,12 @@
 # model accruacy is evaluated every 100 samples and added as an aggregate metric.
 # Overtime this accuracy metric falls due the error introduced into the data.
 
-import cdsw, time, os, random, json
+import time, os, random, json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
 from cmlbootstrap import CMLBootstrap
-import seaborn as sns
 import copy
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
@@ -150,66 +149,25 @@ import cmlapi
 from src.api import ApiUtility
 from datagen import BankDataGen
 from pyspark.ml.feature import VectorAssembler, StandardScaler, Imputer, StringIndexer, OneHotEncoder
-
-
-#hive_database = os.environ["HIVE_DATABASE"]
-#hive_table = os.environ["HIVE_TABLE"]
-#hive_table_fq = hive_database + "." + hive_table
-
 import cml.data_v1 as cmldata
-
-# Sample in-code customization of spark configurations
-#from pyspark import SparkContext
-#SparkContext.setSystemProperty('spark.executor.cores', '1')
-#SparkContext.setSystemProperty('spark.executor.memory', '2g')
-
-CONNECTION_NAME = "go01-aw-dl"
-conn = cmldata.get_connection(CONNECTION_NAME)
-spark = conn.get_spark_session()
-
-# Sample usage to run query through spark
-#EXAMPLE_SQL_QUERY = "show databases"
-#spark.sql(EXAMPLE_SQL_QUERY).show()
-
-username = os.environ["PROJECT_OWNER"]
 
 #---------------------------------------------------
 #               CREATE BATCH DATA
 #---------------------------------------------------
 
-dg = BankDataGen(spark, username)
+USERNAME = os.environ["PROJECT_OWNER"]
+DBNAME = "BNK_MLOPS_DEMO"
+STORAGE = "s3a://goes-se-sandbox01"
+CONNECTION_NAME = "se-aw-mdl"
 
-bankTransactionsSampleDf = dg.bankDataGen()
+# Instantiate BankDataGen class
+dg = BankDataGen(USERNAME, DBNAME, STORAGE, CONNECTION_NAME)
 
-def labelEncoder(df, labelCol):
-    """
-    Method to transform dataframe label from categorical to numerical column type
-    """
-    indexer = StringIndexer(inputCol=labelCol, outputCol="label")
-    df = indexer.fit(df).transform(df)
-    df = df.drop(labelCol)
-    return df
+# Create CML Spark Connection
+spark = dg.createSparkConnection()
 
-bankTransactionsSampleDf = labelEncoder(bankTransactionsSampleDf, "fraud")
-
-features = ["age",
-      "credit_card_balance",
-      "bank_account_balance",
-      "mortgage_balance",
-      "primary_loan_balance",
-      "sec_bank_account_balance",
-      "savings_account_balance",
-      "sec_savings_account_balance",
-      "secondary_loan_balance",
-      "total_est_nworth",
-      "college_loan_balance",
-      "transaction_amount",
-      "latitude",
-      "longitude",
-      "label"
-  ]
-
-df = bankTransactionsSampleDf[features].toPandas()
+# Create Banking Transactions DF
+df = dg.dataGen(spark).toPandas()
 
 # You can access all models with API V2
 
@@ -221,7 +179,7 @@ client.list_models(project_id)
 # You can use an APIV2-based utility to access the latest model's metadata. For more, explore the src folder
 apiUtil = ApiUtility()
 
-model_name = "SparkClf-pauldefusco-c0d52977"
+model_name = "BankFraudClassifier-pauldefusco-64417f18"
 
 Model_AccessKey = apiUtil.get_latest_deployment_details(model_name=model_name)["model_access_key"]
 Deployment_CRN = apiUtil.get_latest_deployment_details(model_name=model_name)["latest_deployment_crn"]
