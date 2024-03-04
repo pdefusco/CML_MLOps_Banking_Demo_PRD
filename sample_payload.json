@@ -5,3 +5,22 @@
       [[35.5, 20000.5, 3900.5, 14000.5, 2944.5, 3400.5, 12000.5, 29000.5, 1300.5, 15000.5, 10000.5, 2000.5, 90.5, 120.5]]
     }
   }
+
+  {'dataframe_split': {
+    'columns': ['age',
+     'credit_card_balance',
+     'bank_account_balance',
+     'mortgage_balance',
+     'sec_bank_account_balance',
+     'savings_account_balance',
+     'sec_savings_account_balance',
+     'total_est_nworth',
+     'primary_loan_balance',
+     'secondary_loan_balance',
+     'uni_loan_balance',
+     'longitude',
+     'latitude',
+     'transaction_amount'],
+    'data': [['6531.577877253038, 1992.2209781802449, 2412.7199498004306, 8922.579992297175, 5410.878574836847, 9944.50118396351, 8163.18521714102, 5844.696800529618, 8933.655357933108, 3757.0122834494973, 3944.3995264783653, 2107.216763725033, 9839.667315983404, 1725.2533453830656']]
+  }
+}
